@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\PackageController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,6 +49,13 @@ Route::prefix('admin')->group(function () {
         Route::get('users/{id}/tree', [UserController::class, 'tree']);
         Route::get('users/{id}/financial-summary', [UserController::class, 'financialSummary']);
         Route::get('users/{id}/package-history', [UserController::class, 'packageHistory']);
+
+        // Package management routes
+        Route::apiResource('packages', PackageController::class);
+        Route::post('packages/{id}/restore', [PackageController::class, 'restore']);
+        Route::delete('packages/{id}/force-delete', [PackageController::class, 'forceDelete']);
+        Route::get('packages/{id}/stats', [PackageController::class, 'stats']);
+        Route::patch('packages/{id}/toggle-status', [PackageController::class, 'toggleStatus']);
     });
 });
 
