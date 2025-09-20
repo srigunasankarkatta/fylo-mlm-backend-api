@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\PackageController;
+use App\Http\Controllers\Admin\IncomeConfigController;
 
 /*
 |--------------------------------------------------------------------------
@@ -56,6 +57,16 @@ Route::prefix('admin')->group(function () {
         Route::delete('packages/{id}/force-delete', [PackageController::class, 'forceDelete']);
         Route::get('packages/{id}/stats', [PackageController::class, 'stats']);
         Route::patch('packages/{id}/toggle-status', [PackageController::class, 'toggleStatus']);
+
+        // Income configuration management routes
+        Route::apiResource('income-configs', IncomeConfigController::class);
+        Route::post('income-configs/{id}/restore', [IncomeConfigController::class, 'restore']);
+        Route::delete('income-configs/{id}/force-delete', [IncomeConfigController::class, 'forceDelete']);
+        Route::get('income-configs/{id}/stats', [IncomeConfigController::class, 'stats']);
+        Route::patch('income-configs/{id}/toggle-status', [IncomeConfigController::class, 'toggleStatus']);
+        Route::post('income-configs/{id}/create-version', [IncomeConfigController::class, 'createVersion']);
+        Route::get('income-configs/effective', [IncomeConfigController::class, 'effective']);
+        Route::get('income-configs/types', [IncomeConfigController::class, 'types']);
     });
 });
 
