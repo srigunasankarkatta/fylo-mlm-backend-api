@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\IncomeConfigController;
+use App\Http\Controllers\Admin\ClubIncomeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -67,6 +68,19 @@ Route::prefix('admin')->group(function () {
         Route::post('income-configs/{id}/create-version', [IncomeConfigController::class, 'createVersion']);
         Route::get('income-configs/effective', [IncomeConfigController::class, 'effective']);
         Route::get('income-configs/types', [IncomeConfigController::class, 'types']);
+
+        // Club income management routes
+        Route::apiResource('club-income', ClubIncomeController::class);
+        Route::post('club-income/{id}/restore', [ClubIncomeController::class, 'restore']);
+        Route::delete('club-income/{id}/force-delete', [ClubIncomeController::class, 'forceDelete']);
+        Route::get('club-income/{id}/stats', [ClubIncomeController::class, 'stats']);
+        Route::patch('club-income/{id}/toggle-status', [ClubIncomeController::class, 'toggleStatus']);
+        Route::post('club-income/{id}/payout', [ClubIncomeController::class, 'payout']);
+        Route::post('club-income/bulk-payout', [ClubIncomeController::class, 'bulkPayout']);
+        Route::get('club-income/dashboard', [ClubIncomeController::class, 'dashboard']);
+        Route::get('club-income/ready-for-payout', [ClubIncomeController::class, 'readyForPayout']);
+        Route::patch('club-income/{id}/mark-completed', [ClubIncomeController::class, 'markCompleted']);
+        Route::get('club-income/matrix/{sponsorId}', [ClubIncomeController::class, 'matrixVisualization']);
     });
 });
 
