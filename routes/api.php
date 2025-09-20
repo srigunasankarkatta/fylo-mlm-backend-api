@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\IncomeConfigController;
 use App\Http\Controllers\Admin\ClubIncomeController;
+use App\Http\Controllers\Admin\SystemSettingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -81,6 +82,18 @@ Route::prefix('admin')->group(function () {
         Route::get('club-income/ready-for-payout', [ClubIncomeController::class, 'readyForPayout']);
         Route::patch('club-income/{id}/mark-completed', [ClubIncomeController::class, 'markCompleted']);
         Route::get('club-income/matrix/{sponsorId}', [ClubIncomeController::class, 'matrixVisualization']);
+
+        // System settings management routes
+        Route::apiResource('system-settings', SystemSettingController::class);
+        Route::get('system-settings/key/{key}', [SystemSettingController::class, 'showByKey']);
+        Route::post('system-settings/{id}/restore', [SystemSettingController::class, 'restore']);
+        Route::delete('system-settings/{id}/force-delete', [SystemSettingController::class, 'forceDelete']);
+        Route::get('system-settings/stats', [SystemSettingController::class, 'stats']);
+        Route::post('system-settings/{id}/clear-cache', [SystemSettingController::class, 'clearCache']);
+        Route::post('system-settings/clear-all-cache', [SystemSettingController::class, 'clearAllCache']);
+        Route::post('system-settings/bulk-update', [SystemSettingController::class, 'bulkUpdate']);
+        Route::get('system-settings/export', [SystemSettingController::class, 'export']);
+        Route::post('system-settings/import', [SystemSettingController::class, 'import']);
     });
 });
 
