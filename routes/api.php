@@ -99,16 +99,22 @@ Route::prefix('admin')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| User Authentication Routes (Future)
+| User Authentication Routes
 |--------------------------------------------------------------------------
 |
-| Routes for user authentication will be added here
+| Routes for user authentication using JWT
 |
 */
 
-// Route::prefix('user')->group(function () {
-//     Route::post('login', [UserAuthController::class, 'login']);
-//     Route::post('register', [UserAuthController::class, 'register']);
-//     Route::post('logout', [UserAuthController::class, 'logout'])->middleware('auth:api');
-//     Route::get('me', [UserAuthController::class, 'me'])->middleware('auth:api');
-// });
+use App\Http\Controllers\Auth\UserAuthController;
+
+// Public routes (no authentication required)
+Route::post('register', [UserAuthController::class, 'register']);
+Route::post('login', [UserAuthController::class, 'login']);
+
+// Protected routes (JWT authentication required)
+Route::middleware(['jwt.auth', 'role:user'])->group(function () {
+    Route::post('logout', [UserAuthController::class, 'logout']);
+    Route::get('me', [UserAuthController::class, 'me']);
+    Route::post('refresh', [UserAuthController::class, 'refresh']);
+});
