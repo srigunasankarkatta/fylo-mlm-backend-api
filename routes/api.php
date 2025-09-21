@@ -107,14 +107,27 @@ Route::prefix('admin')->group(function () {
 */
 
 use App\Http\Controllers\Auth\UserAuthController;
+use App\Http\Controllers\Api\PackageController as ApiPackageController;
+use App\Http\Controllers\Api\UserPackageController;
 
 // Public routes (no authentication required)
 Route::post('register', [UserAuthController::class, 'register']);
 Route::post('login', [UserAuthController::class, 'login']);
 
+// Public - packages list/view
+Route::get('packages', [ApiPackageController::class, 'index']);
+Route::get('packages/{id}', [ApiPackageController::class, 'show']);
+
 // Protected routes (JWT authentication required)
 Route::middleware(['jwt.auth', 'role:user'])->group(function () {
+    // Authentication routes
     Route::post('logout', [UserAuthController::class, 'logout']);
     Route::get('me', [UserAuthController::class, 'me']);
     Route::post('refresh', [UserAuthController::class, 'refresh']);
+
+    // User package actions
+    Route::post('user/packages', [UserPackageController::class, 'store']); // initiate purchase
+    Route::post('user/packages/confirm', [UserPackageController::class, 'confirm']); // payment webhook/callback
+    Route::get('user/packages', [UserPackageController::class, 'index']); // list user packages
+    Route::get('user/packages/{id}', [UserPackageController::class, 'show']); // view specific package
 });

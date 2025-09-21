@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class UserPackage extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -23,6 +24,9 @@ class UserPackage extends Model
         'purchase_at',
         'assigned_level',
         'payment_meta',
+        'idempotency_key',
+        'processing',
+        'processed_at',
     ];
 
     /**
@@ -34,6 +38,8 @@ class UserPackage extends Model
         'amount_paid' => 'decimal:8',
         'purchase_at' => 'datetime',
         'payment_meta' => 'array',
+        'processing' => 'boolean',
+        'processed_at' => 'datetime',
     ];
 
     /**
