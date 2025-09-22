@@ -121,6 +121,14 @@ class User extends Authenticatable implements JWTSubject
     }
 
     /**
+     * Get all user packages for this user.
+     */
+    public function userPackages()
+    {
+        return $this->hasMany(UserPackage::class);
+    }
+
+    /**
      * Get auto pool entries by pool level.
      */
     public function getAutoPoolEntriesByLevel(int $level)

@@ -59,6 +59,25 @@ class UserPackageController extends Controller
             'meta' => 'nullable|array'
         ]);
 
+        // Business validation: Sequential package purchase
+        $lastPackage = $user->userPackages()
+            ->where('payment_status', 'completed')
+            ->orderByDesc('package_id')
+            ->first();
+
+        if ($lastPackage) {
+            // User has previous packages - must buy next in sequence
+            $expectedNextPackage = $lastPackage->package_id + 1;
+            if ($payload['package_id'] != $expectedNextPackage) {
+                return $this->error("You must purchase Package {$expectedNextPackage} next. You cannot skip levels.", 422);
+            }
+        } else {
+            // No previous package - must start with package 1
+            if ($payload['package_id'] != 1) {
+                return $this->error('You must start with Package 1.', 422);
+            }
+        }
+
         // Check package active and price matching (basic)
         $package = Package::find($payload['package_id']);
         if (!$package || !$package->is_active) {

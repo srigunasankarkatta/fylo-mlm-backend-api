@@ -49,15 +49,28 @@ class UserAuthController extends Controller
                 'status' => 'active',
             ]);
 
-            // If referral_code provided, link referred_by and place in tree
+            // If referral_code provided, validate referrer and place in tree
             if (!empty($payload['referral_code'])) {
                 $sponsor = User::where('referral_code', $payload['referral_code'])->first();
                 if ($sponsor) {
+                    // Business validation: Referrer must have an active package
+                    $hasActivePackage = $sponsor->userPackages()
+                        ->where('payment_status', 'completed')
+                        ->exists();
+
+                    if (!$hasActivePackage) {
+                        DB::rollBack();
+                        return $this->error('Referrer must have an active package before you can register under them.', 422);
+                    }
+
                     $user->referred_by = $sponsor->id;
                     $user->save();
 
                     // Place user in tree under their referrer
                     app(PlacementService::class)->placeUserInTree($user, $sponsor);
+                } else {
+                    DB::rollBack();
+                    return $this->error('Invalid referral code.', 422);
                 }
             } else {
                 // If no referral code, place as root (first user in system)

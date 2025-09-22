@@ -181,7 +181,28 @@ graph TD
 - `POST /api/user/packages/confirm` - Confirm purchase
 - `GET /api/user/packages` - List user purchases
 
-### **4. Income Distribution**
+### **4. Business Validations**
+
+The system enforces critical business rules to maintain MLM integrity:
+
+#### **Referrer Package Validation**
+- **Rule**: Upline must have an active package before children can register
+- **Implementation**: Checked during registration process
+- **Error**: "Referrer must have an active package before you can register under them"
+- **Purpose**: Ensures only active participants can build downlines
+
+#### **Sequential Package Purchase**
+- **Rule**: Users must purchase packages in sequence (1 → 2 → 3, etc.)
+- **Implementation**: Validated before purchase initiation
+- **Error**: "You must purchase Package X next. You cannot skip levels"
+- **Purpose**: Enforces proper progression through MLM levels
+
+#### **Child Placement Limit**
+- **Rule**: Maximum 4 children per parent (binary tree structure)
+- **Implementation**: BFS spillover logic in PlacementService
+- **Purpose**: Maintains balanced tree structure
+
+### **5. Income Distribution**
 
 The `ProcessPurchaseJob` handles three types of income:
 
@@ -570,6 +591,7 @@ php artisan queue:work --once
 - ✅ User Registration with Referral Codes
 - ✅ Tree Placement with Spillover Logic
 - ✅ Wallet Initialization at Registration
+- ✅ Business Validations (Referrer Package, Sequential Purchase)
 - ✅ Package Management
 - ✅ Purchase Processing
 - ✅ Income Distribution (Level, Fasttrack, Company)
