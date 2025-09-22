@@ -12,6 +12,8 @@ use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use App\Services\PlacementService;
+use App\Models\Wallet;
 
 class UserAuthController extends Controller
 {
@@ -47,14 +49,23 @@ class UserAuthController extends Controller
                 'status' => 'active',
             ]);
 
-            // If referral_code provided, link referred_by (will check existence)
+            // If referral_code provided, link referred_by and place in tree
             if (!empty($payload['referral_code'])) {
                 $sponsor = User::where('referral_code', $payload['referral_code'])->first();
                 if ($sponsor) {
                     $user->referred_by = $sponsor->id;
                     $user->save();
+
+                    // Place user in tree under their referrer
+                    app(PlacementService::class)->placeUserInTree($user, $sponsor);
                 }
+            } else {
+                // If no referral code, place as root (first user in system)
+                app(PlacementService::class)->placeUserInTree($user, $user);
             }
+
+            // Initialize wallets for the new user
+            $this->initializeUserWallets($user);
 
             // Ensure 'user' role exists and assign
             $role = Role::firstOrCreate(['name' => 'user']);
@@ -250,6 +261,25 @@ class UserAuthController extends Controller
             }
         } catch (\Throwable $e) {
             // ignore
+        }
+    }
+
+    /**
+     * Initialize wallets for a new user
+     * Creates all necessary wallet types with zero balance
+     */
+    protected function initializeUserWallets(User $user): void
+    {
+        $walletTypes = ['commission', 'fasttrack', 'autopool', 'club', 'main'];
+
+        foreach ($walletTypes as $walletType) {
+            Wallet::create([
+                'user_id' => $user->id,
+                'wallet_type' => $walletType,
+                'currency' => 'USD', // Default currency, can be made dynamic later
+                'balance' => 0,
+                'pending_balance' => 0,
+            ]);
         }
     }
 }
