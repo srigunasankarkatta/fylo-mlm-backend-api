@@ -121,7 +121,14 @@ class ProcessPurchaseJob implements ShouldQueue
 
         // Identify immediate placement parent (user_tree parent_id)
         $placement = UserTree::where('user_id', $order->user_id)->first();
-        $parentId = $placement ? $placement->parent_id : null;
+        $parentNodeId = $placement ? $placement->parent_id : null;
+
+        // Get the actual user ID of the parent
+        $parentUserId = null;
+        if ($parentNodeId) {
+            $parentNode = UserTree::find($parentNodeId);
+            $parentUserId = $parentNode ? $parentNode->user_id : null;
+        }
 
         foreach ($configs as $cfg) {
             // Normalize percentage to fraction: e.g., cfg.percentage = 10 => 0.10 ; 0.1 => 0.001
@@ -136,8 +143,8 @@ class ProcessPurchaseJob implements ShouldQueue
             }
 
             // Determine beneficiary: immediate parent if exists, else company_total
-            if ($parentId) {
-                $beneficiaryUserId = $parentId;
+            if ($parentUserId) {
+                $beneficiaryUserId = $parentUserId;
                 $beneficiaryWallet = $this->getOrCreateWallet($beneficiaryUserId, 'fasttrack', $order->currency ?? 'USD');
             } else {
                 // company wallet: user_id = null, wallet_type = company_total
@@ -219,11 +226,14 @@ class ProcessPurchaseJob implements ShouldQueue
 
         // Walk up the placement tree: get parent chain
         $placement = UserTree::where('user_id', $order->user_id)->first();
-        $parentId = $placement ? $placement->parent_id : null;
+        $parentNodeId = $placement ? $placement->parent_id : null;
 
         $ancestorsCount = 0;
-        while ($parentId) {
-            $ancestor = User::find($parentId);
+        while ($parentNodeId) {
+            $parentNode = UserTree::find($parentNodeId);
+            if (! $parentNode) break;
+
+            $ancestor = User::find($parentNode->user_id);
             if (! $ancestor) break;
 
             $amount = $this->normalizeMoneyString($levelAmount);
@@ -263,7 +273,7 @@ class ProcessPurchaseJob implements ShouldQueue
 
             // move up one level
             $parentPlacement = UserTree::where('user_id', $ancestor->id)->first();
-            $parentId = $parentPlacement ? $parentPlacement->parent_id : null;
+            $parentNodeId = $parentPlacement ? $parentPlacement->parent_id : null;
 
             $ancestorsCount++;
             // safety: avoid infinite loops
@@ -470,12 +480,20 @@ class ProcessPurchaseJob implements ShouldQueue
     {
         // Find the sponsor (immediate upline) for club placement
         $placement = UserTree::where('user_id', $order->user_id)->first();
-        $sponsorId = $placement ? $placement->parent_id : null;
 
-        if (!$sponsorId) {
+        if (!$placement || !$placement->parent_id) {
             Log::info("ProcessPurchaseJob: No sponsor found for club placement for user {$order->user_id}");
             return;
         }
+
+        // Get the parent tree node to find the actual user ID
+        $parentNode = UserTree::find($placement->parent_id);
+        if (!$parentNode) {
+            Log::info("ProcessPurchaseJob: Parent tree node not found for user {$order->user_id}");
+            return;
+        }
+
+        $sponsorId = $parentNode->user_id;
 
         // Dispatch club job
         dispatch(new \App\Jobs\ProcessClubJob($order->user_id, $sponsorId, $order->package_id));

@@ -111,12 +111,7 @@ class PlacementService
             }
 
             // Add children to queue for next level search
-            $childIds = UserTree::where('parent_id', $currentParentId)
-                ->pluck('user_id')
-                ->toArray();
-
-            // Convert user_ids to tree node ids
-            $childNodeIds = UserTree::whereIn('user_id', $childIds)
+            $childNodeIds = UserTree::where('parent_id', $currentParentId)
                 ->pluck('id')
                 ->toArray();
 

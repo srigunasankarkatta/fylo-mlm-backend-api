@@ -109,6 +109,7 @@ Route::prefix('admin')->group(function () {
 use App\Http\Controllers\Auth\UserAuthController;
 use App\Http\Controllers\Api\PackageController as ApiPackageController;
 use App\Http\Controllers\Api\UserPackageController;
+use App\Http\Controllers\Api\IncomeController;
 
 // Public routes (no authentication required)
 Route::post('register', [UserAuthController::class, 'register']);
@@ -130,4 +131,12 @@ Route::middleware(['jwt.auth', 'role:user'])->group(function () {
     Route::post('user/packages/confirm', [UserPackageController::class, 'confirm']); // payment webhook/callback
     Route::get('user/packages', [UserPackageController::class, 'index']); // list user packages
     Route::get('user/packages/{id}', [UserPackageController::class, 'show']); // view specific package
+
+    // User income actions
+    Route::get('user/income/summary', [IncomeController::class, 'summary']); // income summary
+    Route::get('user/income/records', [IncomeController::class, 'records']); // income records
+    Route::get('user/income/by-type', [IncomeController::class, 'byType']); // income by type
+    Route::get('user/wallets', [IncomeController::class, 'wallets']); // wallet details
+    Route::get('user/club/matrix', [IncomeController::class, 'clubMatrix']); // club matrix
+    Route::get('user/ledger/transactions', [IncomeController::class, 'ledgerTransactions']); // ledger transactions
 });
