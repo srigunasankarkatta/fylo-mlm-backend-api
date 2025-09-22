@@ -66,9 +66,12 @@ class ProcessPurchaseJob implements ShouldQueue
                 // 3) Company allocation for AutoPool (deduct configured portion and credit company_total wallet)
                 $this->allocateCompanyPortionForAutoPool($order);
 
-                // NOTE: AutoPool distribution and Club payouts are handled by background jobs:
-                // dispatch(new ProcessAutoPoolJob(...)); dispatch(new ProcessClubJob(...));
-                // We'll leave those for separate jobs.
+                // 4) Club income: place user in sponsor's club tree and distribute income
+                $this->processClubIncome($order);
+
+                // NOTE: AutoPool distribution is handled by background jobs:
+                // dispatch(new ProcessAutoPoolJob(...));
+                // We'll leave that for separate jobs.
 
                 // mark processed
                 $order->update([
@@ -458,5 +461,24 @@ class ProcessPurchaseJob implements ShouldQueue
         // Ensure value as numeric string with scale
         if (!is_numeric($v)) return '0';
         return number_format((float)$v, $this->scale, '.', '');
+    }
+
+    /**
+     * Process club income by dispatching ProcessClubJob
+     */
+    protected function processClubIncome(UserPackage $order)
+    {
+        // Find the sponsor (immediate upline) for club placement
+        $placement = UserTree::where('user_id', $order->user_id)->first();
+        $sponsorId = $placement ? $placement->parent_id : null;
+
+        if (!$sponsorId) {
+            Log::info("ProcessPurchaseJob: No sponsor found for club placement for user {$order->user_id}");
+            return;
+        }
+
+        // Dispatch club job
+        dispatch(new \App\Jobs\ProcessClubJob($order->user_id, $sponsorId, $order->package_id));
+        Log::info("ProcessPurchaseJob: Dispatched ProcessClubJob for user {$order->user_id} under sponsor {$sponsorId}");
     }
 }

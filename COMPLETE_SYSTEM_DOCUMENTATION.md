@@ -94,7 +94,12 @@ type, amount, currency, reference_id, description, created_at
 #### `income_records`
 ```sql
 id, user_id, origin_user_id, user_package_id, income_config_id, 
-income_type, amount, currency, status, ledger_transaction_id, created_at
+income_type, amount, currency, status, ledger_transaction_id, reference_id, created_at
+```
+
+#### `club_entries`
+```sql
+id, user_id, sponsor_id, level, status, created_at, updated_at
 ```
 
 ---
@@ -223,6 +228,13 @@ The `ProcessPurchaseJob` handles three types of income:
 - **Recipients**: Company
 - **Wallet**: Company total wallet
 - **Configuration**: `income_configs.metadata.company_share`
+
+#### **Club Income**
+- **Amount**: Fixed amount per level (configurable)
+- **Recipients**: Sponsor in club tree
+- **Wallet**: Club wallet
+- **Structure**: 10-level deep tree with 4 children per level
+- **Configuration**: `income_configs` with `income_type = 'club'` and `level = n`
 
 ---
 
@@ -594,7 +606,7 @@ php artisan queue:work --once
 - ✅ Business Validations (Referrer Package, Sequential Purchase)
 - ✅ Package Management
 - ✅ Purchase Processing
-- ✅ Income Distribution (Level, Fasttrack, Company)
+- ✅ Income Distribution (Level, Fasttrack, Company, Club)
 - ✅ Payment Integration
 - ✅ Queue Processing
 - ✅ Comprehensive API
