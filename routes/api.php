@@ -139,4 +139,28 @@ Route::middleware(['jwt.auth', 'role:user'])->group(function () {
     Route::get('user/wallets', [IncomeController::class, 'wallets']); // wallet details
     Route::get('user/club/matrix', [IncomeController::class, 'clubMatrix']); // club matrix
     Route::get('user/ledger/transactions', [IncomeController::class, 'ledgerTransactions']); // ledger transactions
+
+    // Dashboard APIs
+    Route::get('user/dashboard/summary', [IncomeController::class, 'dashboardSummary']); // dashboard overview
+    Route::get('user/dashboard/quick-stats', [IncomeController::class, 'quickStats']); // quick stats
+    Route::get('user/dashboard/recent-activity', [IncomeController::class, 'recentActivity']); // recent activity
+    Route::get('user/dashboard/widgets', [IncomeController::class, 'dashboardWidgets']); // dashboard widgets
+
+    // Profile APIs
+    Route::get('user/profile', [IncomeController::class, 'profile']); // user profile
+    Route::put('user/profile', [IncomeController::class, 'updateProfile']); // update profile
+    Route::post('user/change-password', [IncomeController::class, 'changePassword']); // change password
+
+    // Network APIs
+    Route::get('user/network/tree', [IncomeController::class, 'networkTree']); // network tree
+    Route::get('user/network/stats', [IncomeController::class, 'networkStats']); // network statistics
+    Route::get('user/network/members', [IncomeController::class, 'networkMembers']); // team members
+
+    // Earnings APIs (alternative names)
+    Route::get('user/earnings/summary', [IncomeController::class, 'summary']); // earnings summary
+    Route::get('user/earnings/history', [IncomeController::class, 'records']); // earnings history
+    Route::get('user/earnings/by-type', [IncomeController::class, 'byType']); // earnings by type
+
+    // Analytics APIs
+    Route::get('user/analytics/performance', [IncomeController::class, 'analyticsPerformance']); // performance analytics
 });

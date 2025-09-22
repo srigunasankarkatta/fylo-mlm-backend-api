@@ -129,6 +129,62 @@ class User extends Authenticatable implements JWTSubject
     }
 
     /**
+     * Get all wallets for this user.
+     */
+    public function wallets()
+    {
+        return $this->hasMany(Wallet::class);
+    }
+
+    /**
+     * Get all income records for this user.
+     */
+    public function incomeRecords()
+    {
+        return $this->hasMany(IncomeRecord::class);
+    }
+
+    /**
+     * Get all ledger transactions where this user is the sender.
+     */
+    public function ledgerTransactionsFrom()
+    {
+        return $this->hasMany(LedgerTransaction::class, 'user_from');
+    }
+
+    /**
+     * Get all ledger transactions where this user is the receiver.
+     */
+    public function ledgerTransactionsTo()
+    {
+        return $this->hasMany(LedgerTransaction::class, 'user_to');
+    }
+
+    /**
+     * Get all club entries where this user is the sponsor.
+     */
+    public function clubEntriesAsSponsor()
+    {
+        return $this->hasMany(ClubEntry::class, 'sponsor_id');
+    }
+
+    /**
+     * Get all club entries where this user is a member.
+     */
+    public function clubEntriesAsMember()
+    {
+        return $this->hasMany(ClubEntry::class, 'user_id');
+    }
+
+    /**
+     * Get the user tree entry for this user.
+     */
+    public function userTree()
+    {
+        return $this->hasOne(UserTree::class);
+    }
+
+    /**
      * Get auto pool entries by pool level.
      */
     public function getAutoPoolEntriesByLevel(int $level)
