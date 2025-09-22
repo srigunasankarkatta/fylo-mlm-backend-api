@@ -10,6 +10,8 @@ class UserTree extends Model
 {
     use HasFactory;
 
+    protected $table = 'user_tree';
+
     /**
      * The attributes that are mass assignable.
      *
