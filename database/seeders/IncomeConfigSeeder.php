@@ -5,153 +5,132 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\IncomeConfig;
 use App\Models\Package;
+use Carbon\Carbon;
 
 class IncomeConfigSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run()
     {
-        // Get packages for reference
-        $packages = Package::all()->keyBy('id');
+        $now = Carbon::now();
 
-        $defaults = [
-            // Global Level Income Configurations
+        // 1) Level income (fixed 0.5 unit per ancestor)
+        IncomeConfig::updateOrCreate(
             [
-                'name' => 'Level Income - Bronze',
                 'income_type' => 'level',
-                'package_id' => $packages->get(1)->id ?? 1, // Bronze
-                'level' => 1,
-                'percentage' => 0.05, // 5%
-                'is_active' => true,
+                'package_id' => null,
+                'level' => null,
+                'sub_level' => null
             ],
             [
-                'name' => 'Level Income - Silver',
-                'income_type' => 'level',
-                'package_id' => $packages->get(2)->id ?? 2, // Silver
-                'level' => 1,
-                'percentage' => 0.06, // 6%
+                'name' => 'Level Income - fixed 0.5',
+                'percentage' => 0.0, // 0% since we use fixed amount
+                'metadata' => ['fixed_amount' => 0.5],
                 'is_active' => true,
-            ],
-            [
-                'name' => 'Level Income - Gold',
-                'income_type' => 'level',
-                'package_id' => $packages->get(3)->id ?? 3, // Gold
-                'level' => 1,
-                'percentage' => 0.07, // 7%
-                'is_active' => true,
-            ],
+                'version' => 1,
+                'effective_from' => $now
+            ]
+        );
 
-            // Global Fasttrack Income Configurations
-            [
-                'name' => 'Fasttrack Income - Global',
-                'income_type' => 'fasttrack',
-                'package_id' => null, // Global
-                'percentage' => 0.05, // 5%
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Company Deduction - Fasttrack',
-                'income_type' => 'fasttrack',
-                'package_id' => null, // Global
-                'percentage' => 0.02, // 2%
-                'is_active' => true,
-            ],
-
-            // Auto Pool Income Configurations
-            [
-                'name' => 'Auto Pool Income - Bronze L1-S1',
-                'income_type' => 'autopool',
-                'package_id' => $packages->get(1)->id ?? 1, // Bronze
-                'level' => 1,
-                'sub_level' => 1,
-                'percentage' => 0.01, // 1%
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Auto Pool Income - Bronze L1-S2',
-                'income_type' => 'autopool',
-                'package_id' => $packages->get(1)->id ?? 1, // Bronze
-                'level' => 1,
-                'sub_level' => 2,
-                'percentage' => 0.015, // 1.5%
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Auto Pool Income - Silver L1-S1',
-                'income_type' => 'autopool',
-                'package_id' => $packages->get(2)->id ?? 2, // Silver
-                'level' => 1,
-                'sub_level' => 1,
-                'percentage' => 0.012, // 1.2%
-                'is_active' => true,
-            ],
-
-            // Club Income Configurations
-            [
-                'name' => 'Club Income - Level 1',
-                'income_type' => 'club',
-                'package_id' => null, // Global
-                'level' => 1,
-                'percentage' => 0.03, // 3%
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Club Income - Level 2',
-                'income_type' => 'club',
-                'package_id' => null, // Global
-                'level' => 2,
-                'percentage' => 0.025, // 2.5%
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Club Income - Level 3',
-                'income_type' => 'club',
-                'package_id' => null, // Global
-                'level' => 3,
-                'percentage' => 0.02, // 2%
-                'is_active' => true,
-            ],
-
-            // Other Income Configurations
-            [
-                'name' => 'Referral Bonus',
-                'income_type' => 'other',
-                'package_id' => null, // Global
-                'percentage' => 0.01, // 1%
-                'is_active' => true,
-            ],
-            [
-                'name' => 'Matching Bonus',
-                'income_type' => 'other',
-                'package_id' => null, // Global
-                'percentage' => 0.005, // 0.5%
-                'is_active' => true,
-            ],
-        ];
-
-        foreach ($defaults as $configData) {
-            // Create unique key for firstOrCreate
-            $uniqueKey = [
-                'income_type' => $configData['income_type'],
-                'package_id' => $configData['package_id'] ?? null,
-                'level' => $configData['level'] ?? null,
-                'sub_level' => $configData['sub_level'] ?? null,
-            ];
-
-            IncomeConfig::firstOrCreate($uniqueKey, $configData);
+        // 2) Fasttrack: seed a package-specific fasttrack percentage and company_share
+        // Default: 5% to upline, 2% company allocation. Admin can tune per package later.
+        $packages = Package::all();
+        foreach ($packages as $pkg) {
+            IncomeConfig::updateOrCreate(
+                [
+                    'income_type' => 'fasttrack',
+                    'package_id' => $pkg->id,
+                    'level' => null,
+                    'sub_level' => null
+                ],
+                [
+                    'name' => "Fasttrack - package {$pkg->code}",
+                    'percentage' => 5.0, // admin enters 5 meaning 5% (job normalizes)
+                    'metadata' => ['company_share' => 2.0], // 2% goes to Total Company Income by default
+                    'is_active' => true,
+                    'version' => 1,
+                    'effective_from' => $now
+                ]
+            );
         }
 
-        $this->command->info('Income configurations seeded successfully!');
-        $this->command->info('Created ' . count($defaults) . ' income configurations');
+        // 3) Company Deduction (global fallback)
+        IncomeConfig::updateOrCreate(
+            [
+                'income_type' => 'fasttrack',
+                'package_id' => null,
+                'level' => null,
+                'sub_level' => null,
+                'name' => 'Company Deduction (global)'
+            ],
+            [
+                'name' => 'Company Deduction (global)',
+                'percentage' => 0.0, // 0% since we use company_share
+                'metadata' => ['company_share' => 2.0],
+                'is_active' => true,
+                'version' => 1,
+                'effective_from' => $now
+            ]
+        );
 
-        // Display summary
-        $this->command->info('Configuration summary:');
-        $this->command->info('- Level Income: ' . IncomeConfig::byType('level')->count());
-        $this->command->info('- Fasttrack Income: ' . IncomeConfig::byType('fasttrack')->count());
-        $this->command->info('- Auto Pool Income: ' . IncomeConfig::byType('autopool')->count());
-        $this->command->info('- Club Income: ' . IncomeConfig::byType('club')->count());
-        $this->command->info('- Other Income: ' . IncomeConfig::byType('other')->count());
+        // 4) Club income (level payouts)
+        // WARNING: these escalate quickly. We seed by default as per pattern: L1=4, L2=16, L3=64 ...
+        // Admin should confirm these amounts; an alternative is much smaller fixed bonuses.
+        for ($lvl = 1; $lvl <= 10; $lvl++) {
+            $fixed = pow(4, $lvl); // 4^level (L1=4, L2=16, ... L10=1,048,576)
+            IncomeConfig::updateOrCreate(
+                [
+                    'income_type' => 'club',
+                    'package_id' => null,
+                    'level' => $lvl,
+                    'sub_level' => null
+                ],
+                [
+                    'name' => "Club Income - Level {$lvl}",
+                    'percentage' => 0.0, // 0% since we use fixed amount
+                    'metadata' => ['fixed_amount' => $fixed],
+                    'is_active' => true,
+                    'version' => 1,
+                    'effective_from' => $now
+                ]
+            );
+        }
+
+        // 5) AUTOPOOL (sample defaults)
+        // IMPORTANT: Replace these default autopool percentages with your exact business values.
+        // The code below creates for each package, for pool levels 1..10, and sublevels 1..8,
+        // using a sensible distribution per sublevel (sums to 100 across sublevels).
+        //
+        // Example sublevel split (per level):
+        // [10, 12, 14, 14, 14, 12, 12, 12]  => sums to 100
+        // You may want different splits per package. Replace as needed.
+        $defaultSublevelPercents = [10, 12, 14, 14, 14, 12, 12, 12];
+
+        foreach ($packages as $pkg) {
+            for ($poolLevel = 1; $poolLevel <= 10; $poolLevel++) {
+                for ($sub = 1; $sub <= 8; $sub++) {
+                    $pct = $defaultSublevelPercents[$sub - 1];
+                    IncomeConfig::updateOrCreate(
+                        [
+                            'income_type' => 'autopool',
+                            'package_id' => $pkg->id,
+                            'level' => $poolLevel,
+                            'sub_level' => $sub
+                        ],
+                        [
+                            'name' => "AutoPool - Package {$pkg->code} L{$poolLevel}S{$sub}",
+                            'percentage' => $pct, // admin-entered % (e.g. 10 means 10%)
+                            'metadata' => [],
+                            'is_active' => true,
+                            'version' => 1,
+                            'effective_from' => $now
+                        ]
+                    );
+                } // sub
+            } // pool level
+        } // package
+
+        // NOTE: The autopool values above are *default placeholders*. Your original autopool tables include very large numbers.
+        // If those are the intended values, replace the $defaultSublevelPercents or the inside of this seeder with the exact percentages
+        // you want. The admin panel (income-configs) can also be used to edit them later.
     }
 }

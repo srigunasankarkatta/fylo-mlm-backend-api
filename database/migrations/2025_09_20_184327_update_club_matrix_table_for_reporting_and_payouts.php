@@ -19,10 +19,9 @@ return new class extends Migration
 
             // Add indexes for performance if they don't exist
             $indexes = [
-                ['sponsor_id', 'level'],
-                ['member_id', 'level'],
-                ['status'],
-                ['level', 'status']
+                ['sponsor_id', 'depth'],
+                ['member_id', 'depth'],
+                ['depth']
             ];
 
             foreach ($indexes as $index) {
@@ -40,12 +39,10 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('club_matrix', function (Blueprint $table) {
-            $table->dropIndex(['sponsor_id', 'level']);
-            $table->dropIndex(['member_id', 'level']);
-            $table->dropIndex('status');
-            $table->dropIndex(['level', 'status']);
+            $table->dropIndex(['sponsor_id', 'depth']);
+            $table->dropIndex(['member_id', 'depth']);
+            $table->dropIndex('depth');
             $table->dropSoftDeletes();
-            $table->dropColumn(['level', 'position', 'status']);
         });
     }
 };

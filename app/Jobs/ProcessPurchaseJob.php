@@ -495,8 +495,9 @@ class ProcessPurchaseJob implements ShouldQueue
 
         $sponsorId = $parentNode->user_id;
 
-        // Dispatch club job
-        dispatch(new \App\Jobs\ProcessClubJob($order->user_id, $sponsorId, $order->package_id));
-        Log::info("ProcessPurchaseJob: Dispatched ProcessClubJob for user {$order->user_id} under sponsor {$sponsorId}");
+        // Process club income immediately (synchronous)
+        $clubJob = new \App\Jobs\ProcessClubJob($order->user_id, $sponsorId, $order->package_id);
+        $clubJob->handle();
+        Log::info("ProcessPurchaseJob: Processed club income for user {$order->user_id} under sponsor {$sponsorId}");
     }
 }

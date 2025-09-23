@@ -27,8 +27,7 @@ class PlacementService
             return $existingPlacement;
         }
 
-        // Ensure user has wallets initialized
-        $this->ensureUserWalletsExist($user);
+        // Note: Wallets are initialized by UserAuthController after tree placement
 
         // Get referrer's tree node
         $referrerNode = UserTree::where('user_id', $referrer->id)->first();
@@ -249,33 +248,6 @@ class PlacementService
                 'path' => $newPath,
                 'depth' => $newDepth
             ]);
-        }
-    }
-
-    /**
-     * Ensure user has all necessary wallets initialized
-     * Creates wallets if they don't exist
-     */
-    protected function ensureUserWalletsExist(User $user): void
-    {
-        $walletTypes = ['commission', 'fasttrack', 'autopool', 'club', 'main'];
-
-        foreach ($walletTypes as $walletType) {
-            $existingWallet = Wallet::where('user_id', $user->id)
-                ->where('wallet_type', $walletType)
-                ->where('currency', 'USD')
-                ->first();
-
-            if (!$existingWallet) {
-                Wallet::create([
-                    'user_id' => $user->id,
-                    'wallet_type' => $walletType,
-                    'currency' => 'USD',
-                    'balance' => 0,
-                    'pending_balance' => 0,
-                ]);
-                Log::info("Created {$walletType} wallet for user {$user->id}");
-            }
         }
     }
 }

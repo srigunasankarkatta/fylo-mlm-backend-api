@@ -53,14 +53,18 @@ class UserAuthController extends Controller
             if (!empty($payload['referral_code'])) {
                 $sponsor = User::where('referral_code', $payload['referral_code'])->first();
                 if ($sponsor) {
-                    // Business validation: Referrer must have an active package
-                    $hasActivePackage = $sponsor->userPackages()
-                        ->where('payment_status', 'completed')
-                        ->exists();
+                    // Business validation: Referrer must have an active package (skip for admin users)
+                    $isAdmin = $sponsor->hasRole('admin');
 
-                    if (!$hasActivePackage) {
-                        DB::rollBack();
-                        return $this->error('Referrer must have an active package before you can register under them.', 422);
+                    if (!$isAdmin) {
+                        $hasActivePackage = $sponsor->userPackages()
+                            ->where('payment_status', 'completed')
+                            ->exists();
+
+                        if (!$hasActivePackage) {
+                            DB::rollBack();
+                            return $this->error('Referrer must have an active package before you can register under them.', 422);
+                        }
                     }
 
                     $user->referred_by = $sponsor->id;

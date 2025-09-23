@@ -76,9 +76,10 @@ class PurchaseService
                 'purchase_at' => now()
             ]);
 
-            // Dispatch processing job to compute incomes and ledger entries.
-            // Option: process small distributions synchronously here if you prefer immediate credit.
-            dispatch(new ProcessPurchaseJob($order->id));
+            // Process income distribution immediately (synchronous)
+            // This ensures income is calculated and distributed right away
+            $job = new ProcessPurchaseJob($order->id);
+            $job->handle();
         });
 
         return true;

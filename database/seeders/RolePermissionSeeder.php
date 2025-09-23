@@ -6,86 +6,92 @@ use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class RolePermissionSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run(): void
+    public function run()
     {
-        // Create permissions
+        // Permissions list - expand as needed
         $permissions = [
-            'view users',
-            'create users',
-            'edit users',
-            'delete users',
-            'view roles',
-            'create roles',
-            'edit roles',
-            'delete roles',
-            'view permissions',
-            'create permissions',
-            'edit permissions',
-            'delete permissions',
-            'view mlm structure',
-            'manage mlm structure',
-            'view commissions',
-            'manage commissions',
-            'view reports',
-            'manage reports',
+            // Users
+            'users.view',
+            'users.create',
+            'users.update',
+            'users.delete',
+
+            // Packages
+            'packages.view',
+            'packages.create',
+            'packages.update',
+            'packages.delete',
+
+            // Income config
+            'income_configs.view',
+            'income_configs.create',
+            'income_configs.update',
+            'income_configs.delete',
+
+            // Wallets & ledger
+            'wallets.view',
+            'ledger.view',
+            'wallets.adjust',
+
+            // Payouts
+            'payouts.view',
+            'payouts.process',
+
+            // AutoPool & Club
+            'autopool.manage',
+            'club.manage',
+
+            // System settings
+            'system_settings.view',
+            'system_settings.update',
+
+            // Reports & dashboard
+            'reports.view',
+
+            // Admin utilities
+            'audit_logs.view'
         ];
 
-        foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+        foreach ($permissions as $perm) {
+            Permission::firstOrCreate(['name' => $perm]);
         }
 
-        // Create roles
-        $adminRole = Role::create(['name' => 'admin']);
-        $managerRole = Role::create(['name' => 'manager']);
-        $userRole = Role::create(['name' => 'user']);
+        // Roles
+        $adminRole = Role::firstOrCreate(['name' => 'admin']);
+        $userRole = Role::firstOrCreate(['name' => 'user']);
 
-        // Assign permissions to roles
-        $adminRole->givePermissionTo(Permission::all());
+        // Admin gets everything
+        $adminRole->syncPermissions(Permission::all());
 
-        $managerRole->givePermissionTo([
-            'view users',
-            'create users',
-            'edit users',
-            'view mlm structure',
-            'manage mlm structure',
-            'view commissions',
-            'manage commissions',
-            'view reports',
-        ]);
+        // User role gets limited permissions (expand as business requires)
+        $userPerms = [
+            'packages.view',
+            'wallets.view',
+            'ledger.view',
+            'reports.view'
+        ];
+        $userRole->syncPermissions($userPerms);
 
-        $userRole->givePermissionTo([
-            'view mlm structure',
-            'view commissions',
-        ]);
+        // Create a Super Admin user (if not exists)
+        $adminEmail = 'admin@example.com';
+        $admin = User::firstOrCreate(
+            ['email' => $adminEmail],
+            [
+                'uuid' => (string) Str::uuid(),
+                'name' => 'Super Admin',
+                'password' => Hash::make('password123'), // change immediately
+                'referral_code' => strtoupper('ADM' . substr(Str::random(6), 0, 6)),
+                'status' => 'active'
+            ]
+        );
 
-        // Create a test admin user
-        $admin = User::create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-            'password' => bcrypt('password'),
-        ]);
-        $admin->assignRole('admin');
-
-        // Create a test manager user
-        $manager = User::create([
-            'name' => 'Manager User',
-            'email' => 'manager@example.com',
-            'password' => bcrypt('password'),
-        ]);
-        $manager->assignRole('manager');
-
-        // Create a test regular user
-        $user = User::create([
-            'name' => 'Regular User',
-            'email' => 'user@example.com',
-            'password' => bcrypt('password'),
-        ]);
-        $user->assignRole('user');
+        if (!$admin->hasRole('admin')) {
+            $admin->assignRole($adminRole);
+        }
     }
 }
