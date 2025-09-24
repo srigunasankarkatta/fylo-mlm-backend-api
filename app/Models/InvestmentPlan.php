@@ -91,13 +91,10 @@ class InvestmentPlan extends Model
 
     /**
      * Get all investments using this plan.
-     * Note: Investment model will be created later
      */
     public function investments(): HasMany
     {
-        // return $this->hasMany(Investment::class);
-        // Placeholder until Investment model is created
-        return $this->hasMany(User::class, 'id', 'id'); // Temporary placeholder
+        return $this->hasMany(UserInvestment::class, 'investment_plan_id');
     }
 
     /**
@@ -177,12 +174,18 @@ class InvestmentPlan extends Model
         $totalAmount = $this->investments()->sum('amount');
         $activeInvestments = $this->investments()->where('status', 'active')->count();
         $completedInvestments = $this->investments()->where('status', 'completed')->count();
+        $pendingInvestments = $this->investments()->where('status', 'pending')->count();
+        $cancelledInvestments = $this->investments()->where('status', 'cancelled')->count();
+        $withdrawnInvestments = $this->investments()->where('status', 'withdrawn')->count();
 
         return [
             'total_investments' => $totalInvestments,
             'total_amount' => $totalAmount,
             'active_investments' => $activeInvestments,
             'completed_investments' => $completedInvestments,
+            'pending_investments' => $pendingInvestments,
+            'cancelled_investments' => $cancelledInvestments,
+            'withdrawn_investments' => $withdrawnInvestments,
             'average_investment' => $totalInvestments > 0 ? $totalAmount / $totalInvestments : 0,
         ];
     }

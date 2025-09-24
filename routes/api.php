@@ -123,6 +123,8 @@ use App\Http\Controllers\Auth\UserAuthController;
 use App\Http\Controllers\Api\PackageController as ApiPackageController;
 use App\Http\Controllers\Api\UserPackageController;
 use App\Http\Controllers\Api\IncomeController;
+use App\Http\Controllers\Api\InvestmentPlanController as ApiInvestmentPlanController;
+use App\Http\Controllers\Api\UserInvestmentController;
 
 // Public routes (no authentication required)
 Route::post('register', [UserAuthController::class, 'register']);
@@ -131,6 +133,10 @@ Route::post('login', [UserAuthController::class, 'login']);
 // Public - packages list/view
 Route::get('packages', [ApiPackageController::class, 'index']);
 Route::get('packages/{id}', [ApiPackageController::class, 'show']);
+
+// Public - investment plans list/view
+Route::get('investment-plans', [ApiInvestmentPlanController::class, 'index']);
+Route::get('investment-plans/{id}', [ApiInvestmentPlanController::class, 'show']);
 
 // Protected routes (JWT authentication required)
 Route::middleware(['jwt.auth', 'role:user'])->group(function () {
@@ -147,6 +153,12 @@ Route::middleware(['jwt.auth', 'role:user'])->group(function () {
 
     // User income actions
     Route::get('user/income/summary', [IncomeController::class, 'summary']); // income summary
+
+    // User investment actions
+    Route::get('user/investments', [UserInvestmentController::class, 'index']); // list user investments
+    Route::get('user/investments/{id}', [UserInvestmentController::class, 'show']); // view specific investment
+    Route::post('user/investments', [UserInvestmentController::class, 'store']); // purchase investment
+    Route::get('user/investments/summary', [UserInvestmentController::class, 'summary']); // investment summary
     Route::get('user/income/records', [IncomeController::class, 'records']); // income records
     Route::get('user/income/by-type', [IncomeController::class, 'byType']); // income by type
     Route::get('user/wallets', [IncomeController::class, 'wallets']); // wallet details

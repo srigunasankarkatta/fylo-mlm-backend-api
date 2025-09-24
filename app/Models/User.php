@@ -185,6 +185,14 @@ class User extends Authenticatable implements JWTSubject
     }
 
     /**
+     * Get the user's investments.
+     */
+    public function investments()
+    {
+        return $this->hasMany(UserInvestment::class);
+    }
+
+    /**
      * Get auto pool entries by pool level.
      */
     public function getAutoPoolEntriesByLevel(int $level)
