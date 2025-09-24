@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\IncomeConfigController;
 use App\Http\Controllers\Admin\ClubIncomeController;
 use App\Http\Controllers\Admin\SystemSettingController;
+use App\Http\Controllers\Admin\InvestmentPlanController;
 
 /*
 |--------------------------------------------------------------------------
@@ -82,6 +83,18 @@ Route::prefix('admin')->group(function () {
         Route::get('club-income/ready-for-payout', [ClubIncomeController::class, 'readyForPayout']);
         Route::patch('club-income/{id}/mark-completed', [ClubIncomeController::class, 'markCompleted']);
         Route::get('club-income/matrix/{sponsorId}', [ClubIncomeController::class, 'matrixVisualization']);
+
+        // Investment plans management routes
+        Route::get('investment-plans/active', [InvestmentPlanController::class, 'active']);
+        Route::get('investment-plans/for-amount', [InvestmentPlanController::class, 'forAmount']);
+        Route::post('investment-plans/bulk-update', [InvestmentPlanController::class, 'bulkUpdate']);
+        Route::get('investment-plans/export', [InvestmentPlanController::class, 'export']);
+        Route::apiResource('investment-plans', InvestmentPlanController::class);
+        Route::post('investment-plans/{id}/restore', [InvestmentPlanController::class, 'restore']);
+        Route::delete('investment-plans/{id}/force-delete', [InvestmentPlanController::class, 'forceDelete']);
+        Route::get('investment-plans/{id}/stats', [InvestmentPlanController::class, 'stats']);
+        Route::patch('investment-plans/{id}/toggle-status', [InvestmentPlanController::class, 'toggleStatus']);
+        Route::post('investment-plans/{id}/create-version', [InvestmentPlanController::class, 'createVersion']);
 
         // System settings management routes
         Route::apiResource('system-settings', SystemSettingController::class);

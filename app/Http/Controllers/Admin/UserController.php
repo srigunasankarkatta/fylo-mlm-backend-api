@@ -52,7 +52,7 @@ class UserController extends ApiController
         }
 
         // Include relationships
-        $query->with(['package', 'roles', 'permissions']);
+        $query->with(['roles', 'permissions']);
 
         // Order by
         $orderBy = $request->get('order_by', 'created_at');
@@ -70,7 +70,7 @@ class UserController extends ApiController
     public function show($id)
     {
         $user = User::withTrashed()
-            ->with(['package', 'roles', 'permissions', 'referrer', 'parent', 'children'])
+            ->with(['roles', 'permissions'])
             ->find($id);
 
         if (!$user) {
@@ -108,7 +108,7 @@ class UserController extends ApiController
             $user->assignRole($request->roles);
         }
 
-        return $this->success($user->load(['package', 'roles', 'permissions']), 'User created successfully', 201);
+        return $this->success($user->load(['roles', 'permissions']), 'User created successfully', 201);
     }
 
     /**
@@ -148,7 +148,7 @@ class UserController extends ApiController
             $user->syncRoles($request->roles);
         }
 
-        return $this->success($user->load(['package', 'roles', 'permissions']), 'User updated successfully');
+        return $this->success($user->load(['roles', 'permissions']), 'User updated successfully');
     }
 
     /**
@@ -182,7 +182,7 @@ class UserController extends ApiController
 
         $user->restore();
 
-        return $this->success($user->load(['package', 'roles', 'permissions']), 'User restored successfully');
+        return $this->success($user->load(['roles', 'permissions']), 'User restored successfully');
     }
 
     /**
@@ -212,9 +212,9 @@ class UserController extends ApiController
 
         $treeData = [
             'user' => $user,
-            'direct_referrals' => $user->children,
-            'tree_ancestors' => $user->getTreeAncestors(),
-            'tree_descendants' => $user->getTreeDescendants(),
+            'direct_referrals' => [], // TODO: Implement when tree relationships are added
+            'tree_ancestors' => [], // TODO: Implement when tree relationships are added
+            'tree_descendants' => [], // TODO: Implement when tree relationships are added
             'tree_stats' => $user->getClubMatrixStats(),
         ];
 
@@ -262,9 +262,9 @@ class UserController extends ApiController
 
         $packageHistory = [
             'user' => $user,
-            'current_package' => $user->package,
-            'package_history' => $user->userPackages()->with('package')->get(),
-            'total_spent' => $user->getTotalUserPackageSpentAttribute(),
+            'current_package' => null, // TODO: Implement when package relationship is added
+            'package_history' => $user->userPackages()->get(),
+            'total_spent' => 0, // TODO: Implement when package spending calculation is added
         ];
 
         return $this->success($packageHistory, 'User package history retrieved');
