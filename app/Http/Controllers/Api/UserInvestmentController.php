@@ -315,4 +315,178 @@ class UserInvestmentController extends ApiController
 
         return $this->success($summary, 'Investment summary retrieved successfully');
     }
+
+    /**
+     * Get user investment transactions with earnings details.
+     */
+    public function transactions(Request $request)
+    {
+        $user = auth()->user();
+
+        $query = $user->investments();
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by plan
+        if ($request->filled('plan_id')) {
+            $query->where('investment_plan_id', $request->plan_id);
+        }
+
+        // Date range filtering
+        if ($request->filled('from_date')) {
+            $query->where('invested_at', '>=', $request->from_date);
+        }
+        if ($request->filled('to_date')) {
+            $query->where('invested_at', '<=', $request->to_date);
+        }
+
+        // Amount range filtering
+        if ($request->filled('min_amount')) {
+            $query->where('amount', '>=', $request->min_amount);
+        }
+        if ($request->filled('max_amount')) {
+            $query->where('amount', '<=', $request->max_amount);
+        }
+
+        // Include relationships
+        $query->with(['investmentPlan', 'referrer']);
+
+        // Order by
+        $orderBy = $request->get('order_by', 'invested_at');
+        $orderDirection = $request->get('order_direction', 'desc');
+        $query->orderBy($orderBy, $orderDirection);
+
+        $investments = $query->paginate($request->get('per_page', 20));
+
+        // Transform the data for customer consumption
+        $transformedInvestments = $investments->getCollection()->map(function ($investment) {
+            return [
+                'transaction_id' => $investment->id,
+                'investment_plan' => [
+                    'id' => $investment->investmentPlan->id,
+                    'name' => $investment->investmentPlan->name,
+                    'code' => $investment->investmentPlan->code,
+                    'description' => $investment->investmentPlan->description,
+                ],
+                'transaction_details' => [
+                    'amount_invested' => (float) $investment->amount,
+                    'amount_invested_formatted' => $investment->formatted_amount,
+                    'daily_profit_percent' => (float) $investment->daily_profit_percent,
+                    'daily_profit_percent_formatted' => $investment->formatted_daily_profit_percent,
+                    'duration_days' => $investment->duration_days,
+                    'status' => $investment->status,
+                    'invested_at' => $investment->invested_at,
+                    'start_at' => $investment->start_at,
+                    'end_at' => $investment->end_at,
+                    'matured_at' => $investment->matured_at,
+                ],
+                'earnings_details' => [
+                    'accrued_interest' => (float) $investment->accrued_interest,
+                    'accrued_interest_formatted' => $investment->formatted_accrued_interest,
+                    'total_payout' => (float) $investment->total_payout,
+                    'total_payout_formatted' => $investment->formatted_total_payout,
+                    'daily_interest_amount' => $investment->getDailyInterestAmount(),
+                    'daily_interest_amount_formatted' => number_format($investment->getDailyInterestAmount(), 2),
+                    'total_expected_return' => $investment->getTotalExpectedReturn(),
+                    'total_expected_return_formatted' => number_format($investment->getTotalExpectedReturn(), 2),
+                    'remaining_days' => $investment->getRemainingDays(),
+                    'elapsed_days' => $investment->getElapsedDays(),
+                    'progress_percentage' => $investment->getProgressPercentage(),
+                ],
+                'referral_details' => [
+                    'referral_commission' => (float) $investment->referral_commission,
+                    'referral_commission_formatted' => $investment->formatted_referral_commission,
+                    'referrer' => $investment->referrer ? [
+                        'id' => $investment->referrer->id,
+                        'name' => $investment->referrer->name,
+                        'email' => $investment->referrer->email,
+                    ] : null,
+                ],
+                'metadata' => $investment->metadata,
+                'created_at' => $investment->created_at,
+                'updated_at' => $investment->updated_at,
+            ];
+        });
+
+        // Replace the collection with transformed data
+        $investments->setCollection($transformedInvestments);
+
+        return $this->paginated($investments, 'Investment transactions retrieved successfully');
+    }
+
+    /**
+     * Get user earnings summary by period.
+     */
+    public function earnings(Request $request)
+    {
+        $user = auth()->user();
+
+        $period = $request->get('period', 'all'); // all, today, week, month, year
+        $query = $user->investments();
+
+        // Apply period filter
+        switch ($period) {
+            case 'today':
+                $query->whereDate('invested_at', today());
+                break;
+            case 'week':
+                $query->whereBetween('invested_at', [now()->startOfWeek(), now()->endOfWeek()]);
+                break;
+            case 'month':
+                $query->whereMonth('invested_at', now()->month)
+                    ->whereYear('invested_at', now()->year);
+                break;
+            case 'year':
+                $query->whereYear('invested_at', now()->year);
+                break;
+        }
+
+        $investments = $query->get();
+
+        $earnings = [
+            'period' => $period,
+            'total_investments' => $investments->count(),
+            'total_invested' => $investments->sum('amount'),
+            'total_accrued_interest' => $investments->sum('accrued_interest'),
+            'total_payout' => $investments->sum('total_payout'),
+            'total_referral_commission' => $investments->sum('referral_commission'),
+            'net_earnings' => $investments->sum('accrued_interest') + $investments->sum('referral_commission'),
+            'by_status' => [
+                'pending' => [
+                    'count' => $investments->where('status', UserInvestment::STATUS_PENDING)->count(),
+                    'amount' => $investments->where('status', UserInvestment::STATUS_PENDING)->sum('amount'),
+                ],
+                'active' => [
+                    'count' => $investments->where('status', UserInvestment::STATUS_ACTIVE)->count(),
+                    'amount' => $investments->where('status', UserInvestment::STATUS_ACTIVE)->sum('amount'),
+                    'accrued_interest' => $investments->where('status', UserInvestment::STATUS_ACTIVE)->sum('accrued_interest'),
+                ],
+                'completed' => [
+                    'count' => $investments->where('status', UserInvestment::STATUS_COMPLETED)->count(),
+                    'amount' => $investments->where('status', UserInvestment::STATUS_COMPLETED)->sum('amount'),
+                    'total_payout' => $investments->where('status', UserInvestment::STATUS_COMPLETED)->sum('total_payout'),
+                ],
+                'cancelled' => [
+                    'count' => $investments->where('status', UserInvestment::STATUS_CANCELLED)->count(),
+                    'amount' => $investments->where('status', UserInvestment::STATUS_CANCELLED)->sum('amount'),
+                ],
+                'withdrawn' => [
+                    'count' => $investments->where('status', UserInvestment::STATUS_WITHDRAWN)->count(),
+                    'amount' => $investments->where('status', UserInvestment::STATUS_WITHDRAWN)->sum('amount'),
+                ],
+            ],
+        ];
+
+        // Add formatted values
+        $earnings['total_invested_formatted'] = number_format($earnings['total_invested'], 2);
+        $earnings['total_accrued_interest_formatted'] = number_format($earnings['total_accrued_interest'], 2);
+        $earnings['total_payout_formatted'] = number_format($earnings['total_payout'], 2);
+        $earnings['total_referral_commission_formatted'] = number_format($earnings['total_referral_commission'], 2);
+        $earnings['net_earnings_formatted'] = number_format($earnings['net_earnings'], 2);
+
+        return $this->success($earnings, 'Earnings summary retrieved successfully');
+    }
 }

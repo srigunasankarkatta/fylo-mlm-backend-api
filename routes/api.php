@@ -156,9 +156,11 @@ Route::middleware(['jwt.auth', 'role:user'])->group(function () {
 
     // User investment actions
     Route::get('user/investments', [UserInvestmentController::class, 'index']); // list user investments
-    Route::get('user/investments/{id}', [UserInvestmentController::class, 'show']); // view specific investment
     Route::post('user/investments', [UserInvestmentController::class, 'store']); // purchase investment
     Route::get('user/investments/summary', [UserInvestmentController::class, 'summary']); // investment summary
+    Route::get('user/investments/transactions', [UserInvestmentController::class, 'transactions']); // investment transactions with earnings
+    Route::get('user/investments/earnings', [UserInvestmentController::class, 'earnings']); // earnings summary by period
+    Route::get('user/investments/{id}', [UserInvestmentController::class, 'show']); // view specific investment
     Route::get('user/income/records', [IncomeController::class, 'records']); // income records
     Route::get('user/income/by-type', [IncomeController::class, 'byType']); // income by type
     Route::get('user/wallets', [IncomeController::class, 'wallets']); // wallet details
