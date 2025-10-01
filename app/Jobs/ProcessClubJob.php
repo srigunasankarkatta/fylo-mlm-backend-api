@@ -62,6 +62,7 @@ class ProcessClubJob implements ShouldQueue
         }
 
         // Find next available slot using BFS
+        // In a 4-4 matrix: Level 1 = 4 slots under original sponsor, Level 2 = 16 slots under Level 1 members, etc.
         $queue = [$sponsorId];
         $visited = [];
         $level = 1;
@@ -79,9 +80,10 @@ class ProcessClubJob implements ShouldQueue
                 ->where('level', $level)
                 ->count();
 
-            $maxSlotsAtLevel = pow(4, $level); // 4^level slots at each level
+            // For each level, the max slots per sponsor is 4
+            $maxSlotsPerSponsor = 4;
 
-            if ($childrenCount < $maxSlotsAtLevel) {
+            if ($childrenCount < $maxSlotsPerSponsor) {
                 // Found available slot
                 $entry = ClubEntry::create([
                     'user_id' => $userId,
@@ -101,7 +103,8 @@ class ProcessClubJob implements ShouldQueue
                 break;
             }
 
-            // Add children from current level to queue for next level
+            // Add children from the previous level to queue for next level
+            // These children become the new sponsors for the next level
             $children = ClubEntry::where('sponsor_id', $currentSponsorId)
                 ->where('level', $level - 1)
                 ->pluck('user_id')
@@ -134,6 +137,7 @@ class ProcessClubJob implements ShouldQueue
     protected function checkLevelCompletion(int $sponsorId, int $level)
     {
         // Calculate required members for this level: 4^level
+        // Level 1: 4 members, Level 2: 16 members, Level 3: 64 members, etc.
         $requiredMembers = pow(4, $level);
 
         // Count current members at this level
