@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\IncomeConfigController;
 use App\Http\Controllers\Admin\ClubIncomeController;
 use App\Http\Controllers\Admin\SystemSettingController;
 use App\Http\Controllers\Admin\InvestmentPlanController;
+use App\Http\Controllers\Admin\InvestmentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -61,6 +62,14 @@ Route::prefix('admin')->group(function () {
         Route::get('packages/{id}/stats', [PackageController::class, 'stats']);
         Route::patch('packages/{id}/toggle-status', [PackageController::class, 'toggleStatus']);
 
+        // Package transaction routes
+        Route::get('package-transactions', [PackageController::class, 'transactions']);
+        Route::get('package-transactions/stats', [PackageController::class, 'transactionStats']);
+        Route::get('package-transactions/dashboard', [PackageController::class, 'transactionDashboard']);
+        Route::get('package-transactions/{id}', [PackageController::class, 'transactionDetails']);
+        Route::patch('package-transactions/{id}/status', [PackageController::class, 'updateTransactionStatus']);
+        Route::get('package-transactions/export/csv', [PackageController::class, 'exportTransactions']);
+
         // Income configuration management routes
         Route::apiResource('income-configs', IncomeConfigController::class);
         Route::post('income-configs/{id}/restore', [IncomeConfigController::class, 'restore']);
@@ -95,6 +104,15 @@ Route::prefix('admin')->group(function () {
         Route::get('investment-plans/{id}/stats', [InvestmentPlanController::class, 'stats']);
         Route::patch('investment-plans/{id}/toggle-status', [InvestmentPlanController::class, 'toggleStatus']);
         Route::post('investment-plans/{id}/create-version', [InvestmentPlanController::class, 'createVersion']);
+
+        // Investment transaction routes
+        Route::get('investment-transactions', [InvestmentController::class, 'transactions']);
+        Route::get('investment-transactions/stats', [InvestmentController::class, 'transactionStats']);
+        Route::get('investment-transactions/dashboard', [InvestmentController::class, 'transactionDashboard']);
+        Route::get('investment-transactions/{id}', [InvestmentController::class, 'transactionDetails']);
+        Route::patch('investment-transactions/{id}/status', [InvestmentController::class, 'updateTransactionStatus']);
+        Route::post('investment-transactions/{id}/activate', [InvestmentController::class, 'activateInvestment']);
+        Route::get('investment-transactions/export/csv', [InvestmentController::class, 'exportTransactions']);
 
         // System settings management routes
         Route::apiResource('system-settings', SystemSettingController::class);

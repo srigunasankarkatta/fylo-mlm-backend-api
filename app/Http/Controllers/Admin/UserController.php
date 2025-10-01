@@ -4,9 +4,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\ApiController;
 use App\Models\User;
+use App\Models\Wallet;
+use App\Services\PlacementService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class UserController extends ApiController
 {
@@ -81,34 +86,89 @@ class UserController extends ApiController
     }
 
     /**
-     * Store a newly created user.
+     * Store a newly created user (Admin API with same logic as user registration).
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $payload = $request->validate([
             'name' => 'required|string|max:150',
             'email' => 'nullable|email|unique:users,email',
             'phone' => 'nullable|string|max:30|unique:users,phone',
             'password' => 'required|string|min:6',
-            'status' => ['required', Rule::in(['active', 'inactive', 'suspended', 'banned', 'deleted'])],
-            'role_hint' => 'nullable|string|max:50',
-            'package_id' => 'nullable|exists:packages,id',
-            'parent_id' => 'nullable|exists:users,id',
-            'position' => 'nullable|integer|min:1|max:4',
-            'referred_by' => 'nullable|exists:users,id',
-            'metadata' => 'nullable|array',
+            'referral_code' => 'nullable|string|max:20',
+            'status' => ['nullable', Rule::in(['active', 'inactive', 'suspended', 'banned', 'deleted'])],
+            'roles' => 'nullable|array',
+            'roles.*' => 'string|exists:roles,name',
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
+        // Use DB transaction for safety (same as user registration)
+        DB::beginTransaction();
+        try {
+            $user = User::create([
+                'uuid' => (string) Str::uuid(),
+                'name' => $payload['name'],
+                'email' => $payload['email'] ?? null,
+                'phone' => $payload['phone'] ?? null,
+                'password' => Hash::make($payload['password']),
+                'referral_code' => strtoupper(uniqid('U')),
+                'referred_by' => null, // set below if referral_code provided
+                'status' => $payload['status'] ?? 'active',
+            ]);
 
-        $user = User::create($validated);
+            // If referral_code provided, validate referrer and place in tree (same logic as registration)
+            if (!empty($payload['referral_code'])) {
+                $sponsor = User::where('referral_code', $payload['referral_code'])->first();
+                if ($sponsor) {
+                    // Business validation: Referrer must have an active package (skip for admin users)
+                    $isAdmin = $sponsor->hasRole('admin');
 
-        // Assign roles if provided
-        if ($request->filled('roles')) {
-            $user->assignRole($request->roles);
+                    if (!$isAdmin) {
+                        $hasActivePackage = $sponsor->userPackages()
+                            ->where('payment_status', 'completed')
+                            ->exists();
+
+                        if (!$hasActivePackage) {
+                            DB::rollBack();
+                            return $this->error('Referrer must have an active package before you can register under them.', 422);
+                        }
+                    }
+
+                    $user->referred_by = $sponsor->id;
+                    $user->save();
+
+                    // Place user in tree under their referrer (same as registration)
+                    app(PlacementService::class)->placeUserInTree($user, $sponsor);
+                } else {
+                    DB::rollBack();
+                    return $this->error('Invalid referral code.', 422);
+                }
+            } else {
+                // If no referral code, place as root (first user in system) - same as registration
+                app(PlacementService::class)->placeUserInTree($user, $user);
+            }
+
+            // Initialize wallets for the new user (same as registration)
+            $this->initializeUserWallets($user);
+
+            // Assign roles if provided, otherwise assign 'user' role (same as registration)
+            if ($request->filled('roles')) {
+                $user->assignRole($request->roles);
+            } else {
+                // Ensure 'user' role exists and assign (same as registration)
+                $role = Role::firstOrCreate(['name' => 'user']);
+                $user->assignRole($role);
+            }
+
+            DB::commit();
+
+            return $this->success([
+                'user' => $user->load(['roles', 'permissions']),
+                'message' => 'User created successfully with same logic as registration'
+            ], 'User created successfully', 201);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return $this->error('User creation failed: ' . $e->getMessage(), 500);
         }
-
-        return $this->success($user->load(['roles', 'permissions']), 'User created successfully', 201);
     }
 
     /**
@@ -268,5 +328,17 @@ class UserController extends ApiController
         ];
 
         return $this->success($packageHistory, 'User package history retrieved');
+    }
+
+    /**
+     * Initialize wallets for a new user (same as user registration).
+     */
+    protected function initializeUserWallets(User $user): void
+    {
+        $walletTypes = ['commission', 'fasttrack', 'autopool', 'club', 'main'];
+
+        foreach ($walletTypes as $walletType) {
+            Wallet::getOrCreate($user->id, $walletType, 'USD');
+        }
     }
 }

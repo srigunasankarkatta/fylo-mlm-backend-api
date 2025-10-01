@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             PackageSeeder::class,
             IncomeConfigSeeder::class,
             SystemSettingsSeeder::class,
+            InvestmentPlanSeeder::class,
         ]);
     }
 }
