@@ -41,8 +41,8 @@ class ProcessClubJob implements ShouldQueue
             // 1) Place new user in sponsor's Club tree
             $entry = $this->placeInClub($this->userId, $this->sponsorId);
 
-            // 2) For each level in the club tree, credit income to sponsor
-            $this->distributeClubIncome($entry);
+            // 2) Check if any levels are now completed and credit income accordingly
+            $this->checkAndDistributeCompletedLevels($entry);
         });
     }
 
@@ -79,7 +79,7 @@ class ProcessClubJob implements ShouldQueue
                 ->where('level', $level)
                 ->count();
 
-            $maxSlotsAtLevel = pow(4, $level - 1); // 4^(level-1) slots at each level
+            $maxSlotsAtLevel = pow(4, $level); // 4^level slots at each level
 
             if ($childrenCount < $maxSlotsAtLevel) {
                 // Found available slot
@@ -114,13 +114,56 @@ class ProcessClubJob implements ShouldQueue
     }
 
     /**
-     * Distribute club income based on the entry level
+     * Check if any club levels are now completed and distribute income accordingly
+     * Club income is only credited when a level threshold is reached:
+     * Level 1: 4 members, Level 2: 16 members, Level 3: 64 members, etc.
      */
-    protected function distributeClubIncome(ClubEntry $entry)
+    protected function checkAndDistributeCompletedLevels(ClubEntry $entry)
     {
         $sponsorId = $entry->sponsor_id;
-        $level = $entry->level;
 
+        // Check each level from 1 to 10 to see if it's now completed
+        for ($level = 1; $level <= 10; $level++) {
+            $this->checkLevelCompletion($sponsorId, $level);
+        }
+    }
+
+    /**
+     * Check if a specific level is completed and credit income if so
+     */
+    protected function checkLevelCompletion(int $sponsorId, int $level)
+    {
+        // Calculate required members for this level: 4^level
+        $requiredMembers = pow(4, $level);
+
+        // Count current members at this level
+        $currentMembers = ClubEntry::where('sponsor_id', $sponsorId)
+            ->where('level', $level)
+            ->count();
+
+        Log::info("ProcessClubJob: Level {$level} for sponsor {$sponsorId}: {$currentMembers}/{$requiredMembers} members");
+
+        // Check if level is now completed
+        if ($currentMembers >= $requiredMembers) {
+            // Check if income was already credited for this level
+            $alreadyCredited = IncomeRecord::where('user_id', $sponsorId)
+                ->where('income_type', 'club')
+                ->where('reference_id', $sponsorId . '_level_' . $level)
+                ->exists();
+
+            if (!$alreadyCredited) {
+                $this->distributeClubIncomeForLevel($sponsorId, $level);
+            } else {
+                Log::info("ProcessClubJob: Level {$level} income already credited to sponsor {$sponsorId}");
+            }
+        }
+    }
+
+    /**
+     * Distribute club income for a completed level
+     */
+    protected function distributeClubIncomeForLevel(int $sponsorId, int $level)
+    {
         // Fetch config for this level
         $config = IncomeConfig::where('income_type', 'club')
             ->where('level', $level)
@@ -139,31 +182,21 @@ class ProcessClubJob implements ShouldQueue
             return;
         }
 
-        // Idempotency check
-        $exists = IncomeRecord::where('income_type', 'club')
-            ->where('reference_id', $entry->id)
-            ->exists();
-
-        if ($exists) {
-            Log::info("ProcessClubJob: Club income already processed for entry {$entry->id}");
-            return;
-        }
-
         // Get or create sponsor's club wallet
         $wallet = $this->getOrCreateWallet($sponsorId, 'club', 'USD');
 
         // Create ledger transaction
         $ledger = LedgerTransaction::create([
             'uuid' => (string) \Illuminate\Support\Str::uuid(),
-            'user_from' => $this->userId,
+            'user_from' => null, // System-generated income
             'user_to' => $sponsorId,
             'wallet_from_id' => null,
             'wallet_to_id' => $wallet->id,
             'type' => 'club_income',
             'amount' => $amount,
             'currency' => 'USD',
-            'reference_id' => $entry->id,
-            'description' => "Club income L{$level} for sponsor {$sponsorId} (entry {$entry->id})"
+            'reference_id' => $sponsorId . '_level_' . $level,
+            'description' => "Club income L{$level} completion bonus for sponsor {$sponsorId}"
         ]);
 
         // Update wallet balance
@@ -172,7 +205,7 @@ class ProcessClubJob implements ShouldQueue
         // Create income record
         IncomeRecord::create([
             'user_id' => $sponsorId,
-            'origin_user_id' => $this->userId,
+            'origin_user_id' => null, // System-generated income
             'user_package_id' => null,
             'income_config_id' => $config->id,
             'income_type' => 'club',
@@ -180,10 +213,10 @@ class ProcessClubJob implements ShouldQueue
             'currency' => 'USD',
             'status' => 'paid',
             'ledger_transaction_id' => $ledger->id,
-            'reference_id' => $entry->id,
+            'reference_id' => $sponsorId . '_level_' . $level,
         ]);
 
-        Log::info("ProcessClubJob: Credited {$amount} to sponsor {$sponsorId}'s club wallet for level {$level}");
+        Log::info("ProcessClubJob: ✅ Level {$level} completed! Credited {$amount} to sponsor {$sponsorId}'s club wallet");
     }
 
     /**
